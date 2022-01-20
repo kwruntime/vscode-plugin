@@ -25,7 +25,8 @@ import { serve } from "https://deno.land/std@0.122.0/http/server.ts"
 import axios from 'npm://axios@0.21.1'
 
 // intelissense for github
-import * as async from 'gitlab://kwruntime/std@1.1.14/util/async.ts'
+import * as async from 'github://kwruntime/std@1.1.14/util/async.ts'
+//same as: import * as async from 'gh+/kwruntime/std@1.1.14/util/async.ts'
 
 // intelissense for gitlab
 import {Tmux} from 'gitlab://jamesxt94/tmux@d0e0b805/src/Tmux.ts'
