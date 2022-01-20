@@ -3,8 +3,39 @@
 Plugin for vscode, atom-ide, or any editor using typescript server, that allows ```Intellisense``` for importing from other protocols, no only from files. 
 Made for usage with [kwruntime](https://github.com/kwruntime/core).
 
-## Without kwruntime-plugin
+## Features
 
+Visual Studio Code without plugin enabled:
+
+![Without plugin](./images/noplugin.png)
+
+Visual Studio Code with plugin enabled:
+
+![With plugin](./images/plugin.png)
+
+
+You can use intellisense for the same protocols supported by [kwruntime](https://github.com/kwruntime/core)
+
+```typescript 
+// Of course, kwruntime doesn't have support for `deno` modules
+// but this shows how plugin can provide intellisense for http/https urls
+import { serve } from "https://deno.land/std@0.122.0/http/server.ts"
+
+// intelissense for npm:// imports
+import axios from 'npm://axios@0.21.1'
+
+// intelissense for github
+import * as async from 'gitlab://kwruntime/std@1.1.14/util/async.ts'
+
+// intelissense for gitlab
+import {Tmux} from 'gitlab://jamesxt94/tmux@d0e0b805/src/Tmux.ts'
+```
+
+See in action: 
+
+![http or https](./images/https.png)
+![npm](./images/axios.png)
+![gitlab](./images/gitlab.png)
 
 
 ## How to use?
