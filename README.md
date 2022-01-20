@@ -71,9 +71,10 @@ See in action:
 3. Install this repo as the plugin. In your package.json add dev dependency
 
 ```json 
-...
+"devDepedencies": {
 	"typescript": "^4.5.x",
 	"kwruntime-plugin": "git://github.com/kwruntime/vscode-plugin"
+}
 ```
 
 4. Install the module
