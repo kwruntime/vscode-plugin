@@ -7,13 +7,16 @@ var Child = require("child_process")
 var redirects = new Map()
 
 
-let logPath = Path.join(os.homedir(), "kwruntime-plugin-error.log")
-let logPath1 = Path.join(os.homedir(), "kwruntime-plugin-names.log")
+
+// TODO: some intelligent or better way to log
+let logPath = Path.join(os.homedir(), ".kawi", "kwruntime-plugin-error.log")
+//let logPath1 = Path.join(os.homedir(), ".kawi", "kwruntime-plugin-names.log")
 
 let st = fs.createWriteStream(logPath, {
 	flags: "a"
 })
 st.on("error", function(){})
+
 
 
 function create(info){
@@ -254,14 +257,18 @@ function create(info){
 
 			}
 		}catch(e){
+			
+			// TODO: some intelligent way to log?
 			st.write(JSON.stringify({
 				moduleNames,
 				message:e.message,
 				stack: e.stack.substring(0, 200)
 			}, null, '\t') + "\n")
+			
 		}
 		finally{
-			fs.writeFileSync(logPath1, JSON.stringify(cacheModules, null, '\t'))
+			// TODO: some intelligent way to log?
+			// fs.writeFileSync(logPath1, JSON.stringify(cacheModules, null, '\t'))
 		}
 
 		let res = resolveModuleNames(moduleNames, containingFile, reusedNames, redirectedReferences, options)
