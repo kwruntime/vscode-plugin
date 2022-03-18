@@ -10,18 +10,21 @@ var redirects = new Map()
 
 // TODO: some intelligent or better way to log
 let logPath = Path.join(os.homedir(), ".kawi", "kwruntime-plugin-error.log")
-//let logPath1 = Path.join(os.homedir(), ".kawi", "kwruntime-plugin-names.log")
-
 let st = fs.createWriteStream(logPath, {
 	flags: "a"
 })
 st.on("error", function(){})
 
 
+/*
+let contPath = Path.join(os.homedir(), ".kawi", "kwruntime-cfiles.log")
+let st1 = fs.createWriteStream(contPath, {
+	flags: "a"
+})
+st*/
+
 
 function create(info){
-
-	//fs.appendFileSync("/home/ubuntu/init", String(Date.now()) + "\n")
 
 	const urlFromGh = function(request){
 		if(request.startsWith("gh+/") || request.startsWith("github+/") || request.startsWith("github://")){
@@ -159,11 +162,34 @@ function create(info){
 	}
 	*/
 
-
+	var networkLocation = Path.join(os.homedir(), ".kawi", "genv2", "network")
+	var networkSourceLocation = Path.join(os.homedir(), ".kawi", "genv2", "network", "sources")
+	if(!fs.existsSync(networkSourceLocation)) fs.mkdirSync(networkSourceLocation)
 
 	info.languageServiceHost.resolveModuleNames = function (moduleNames, containingFile, reusedNames, redirectedReferences, options) {
 		try{
-			var redirect = redirects.get(containingFile)
+			var redirect = redirects.get(containingFile)			
+			var customNetworkLocation = networkLocation
+			if(containingFile.startsWith(networkLocation)){
+
+				if(!redirect){
+					let filer = Path.join(Path.dirname(containingFile), "sources", Path.basename(containingFile))
+					var content = fs.readFileSync(filer,'utf8')
+					try{
+						json = JSON.parse(content)
+						redirect = json.url
+					}
+					catch(e){
+						st.write(JSON.stringify({
+							containingFile,
+							message:e.message,
+							stack: e.stack.substring(0, 200)
+						}, null, '\t') + "\n")
+					}
+				}
+				
+			}
+			
 			var originals = [], newmods = []
 
 			for(var i=0;i<moduleNames.length;i++){
@@ -200,12 +226,24 @@ function create(info){
 					var name = mods1[z]
 					var file = ''
 					if(name.startsWith("http://") || name.startsWith("https://")){
+
+
 						var uri = new URL(name)
 						var id = crypto.createHash("md5").update(name).digest('hex')
 						var ext = Path.extname(uri.pathname)
 						var rname = Path.basename(uri.pathname)
 						if(!ext) rname += ".ts"
-						file = Path.join(os.homedir(), ".kawi", "genv2", "network", id + "-" +  rname)
+						file = Path.join(customNetworkLocation, id + "-" +  rname)						
+						var filer = Path.join(Path.dirname(file), "sources", Path.basename(file))
+
+						if(!fs.existsSync(filer)){
+							fs.writeFileSync(filer, JSON.stringify({
+								file,
+								url: name,
+								time: Date.now()
+							}))
+						}
+
 						resFiles[name] = file
 						if(fs.existsSync(file)){
 							resImports[name] = file
@@ -236,6 +274,11 @@ function create(info){
 					}
 
 					if(file){
+						if(name.startsWith("http://") || name.startsWith("https://")){
+							file = file.replace(networkLocation, customNetworkLocation)
+						}
+
+
 						moduleNames[i] = file
 						redirects.set(file, name)
 					}
