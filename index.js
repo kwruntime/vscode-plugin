@@ -27,6 +27,10 @@ st*/
 function create(info){
 
 	const urlFromGh = function(request){
+
+		
+
+
 		if(request.startsWith("gh+/") || request.startsWith("github+/") || request.startsWith("github://")){
             let parts = request.split("/")
             if(request.startsWith("github://"))
@@ -58,9 +62,20 @@ function create(info){
 
 	const getRedirect = function(mod){
 		let file = ''
-		if(mod.location) file = mod.location.folder
-		if(mod.filename) file = mod.filename
+		if(mod.location){
+			file = mod.location.folder
+			try{
+				let pkgContent = fs.readFileSync(Path.join(mod.location.folder,"package.json"),"utf8")
+				let pkg = JSON.parse(pkgContent)
+				if(typeof pkg.types == "string"){
+					file = Path.join(mod.location.folder, pkg.types)
+				}
+			}catch(e){}
+		}
+		else if(mod.filename) file = mod.filename
+		
 		if(file.endsWith(".ts")) file = file.substring(0, file.length - 3)
+		if(file.endsWith(".d.ts")) file = file.substring(0, file.length - 5)
 		return file
 	}
 
@@ -69,6 +84,7 @@ function create(info){
 		var res = {}, nams = []
 		for(var i=0;i<names.length;i++){
 			var name = names[i]
+			
 			if(cacheModules["types=" + name]){
 				res[name] = cacheModules["types=" + name]
 			}
@@ -94,7 +110,17 @@ function create(info){
 			var m = function(a){
 				return '"' + a + '"'
 			}
-			var result = Child.execSync('kwrun --cache ' + nams.map(m).join(" "))
+			var names =nams.join(" ")
+			
+			var args = ["--cache"].concat(nams)
+			var exe = "kwrun"
+			if(os.platform() == "win32") exe += ".cmd"
+			var result = Child.execFileSync(exe, args, {
+				env: {
+					PATH: process.env.PATH
+				}
+			})
+			// Child.execSync('/home/james/KwRuntime/bin/kwrun --cache ' + names)
 			var str = result.toString()
 			var z = str.indexOf("[kwruntime] Cache result =")
 
@@ -198,7 +224,14 @@ function create(info){
 				if(y >= 0){
 					name = name.substring(0, y)
 				}
-
+				
+				if(name.endsWith(".kwb.js")){
+					name = name.substring(0, name.length - 3)
+				}
+				if(name.endsWith(".kwc.js")){
+					name = name.substring(0, name.length - 3)
+				}
+				
 				originals.push(name)
 				name = urlFromGh(name)
 
@@ -212,19 +245,26 @@ function create(info){
 						name = href
 					}
 				}
+				if((name.startsWith("./") || name.startsWith("../")) && (name.endsWith(".kwb") || name.endsWith(".kwc"))){
+					// from containing file
+					name = Path.join(Path.dirname(containingFile), name)
+				}
 
 				newmods[i] = name
 			}
 
 			var mods1 = newmods.filter(function(name){
-				return name.startsWith("http://") || name.startsWith("https://") || name.startsWith("npm://")
+				return name.startsWith("http://") || name.startsWith("https://") || name.startsWith("npm://") || name.endsWith(".kwb") || name.endsWith(".kwc")
 			})
+						
 			var mods2 = []
 			var resImports = {}, resFiles = {}
 			if(mods1.length){
 				for(var z=0;z<mods1.length;z++){
 					var name = mods1[z]
 					var file = ''
+
+					
 					if(name.startsWith("http://") || name.startsWith("https://")){
 
 
@@ -253,17 +293,32 @@ function create(info){
 							file = ''
 						}
 					}
+
+
+					if(name.endsWith(".kwb") || name.endsWith(".kwc")){
+						if(!file)
+							file = cacheModules[name]
+						if(file){
+							if(file.endsWith(".kwb") || file.endsWith(".kwc")){
+								// a file from network 
+								name = file
+								newmods[z] = name
+								file = ''
+							}
+						}
+					}
+
 					if(!file) mods2.push(name)
 				}
 
-				if(mods2.length)
+				if(mods2.length){
 					Object.assign(resImports, load(mods2))
+				}
 			}
 
 			for(var i=0;i<moduleNames.length;i++){
 				var name = newmods[i]
 				if(name.startsWith("http://") || name.startsWith("https://") || name.startsWith("npm://")){
-
 
 					var file = resImports["types="+name]
 					if(!file){
@@ -278,12 +333,29 @@ function create(info){
 							file = file.replace(networkLocation, customNetworkLocation)
 						}
 
-
+						if(file.endsWith(".ts")) file = file.substring(0, file.length - 3)
 						moduleNames[i] = file
 						redirects.set(file, name)
 					}
 
 				}
+
+				else if(name.endsWith(".kwb") || name.endsWith(".kwc")){
+
+					var file = cacheModules[name]
+					if(resImports[name]){
+						file = resImports[name]
+					}
+					else if(resFiles[name]){
+						file= resFiles[name]
+					}
+					if(file)
+						cacheModules[name] = file
+					
+					if(file.endsWith(".ts")) file = file.substring(0, file.length - 3)
+					moduleNames[i] = file
+				}
+
 				else{
 
 					var ext = Path.extname(name)
@@ -304,6 +376,7 @@ function create(info){
 			// TODO: some intelligent way to log?
 			st.write(JSON.stringify({
 				moduleNames,
+				"aqui": 11,
 				message:e.message,
 				stack: e.stack.substring(0, 200)
 			}, null, '\t') + "\n")
